@@ -1,45 +1,35 @@
 from nltk.corpus import BracketParseCorpusReader
 from nltk import Tree
+from nltk.tree import ParentedTree
 from collections import Counter
 import re
 
+### helper functions ###
+def find_rem_traces(parented_tree):
+    """
+    Find positions of '-NONE-A-PASS-' nodes or -NONE-A-RAISE- in the tree.
+    Also find ABAR-OTHER traces for fronted embedded clauses.
+    """
+    matches = []
+    for subtree in parented_tree:
+        if isinstance(subtree, Tree):
+            if (subtree.label() in ["-NONE-A-PASS-","-NONE-A-RAISE-"] or 
+                (subtree.label() == "-NONE-ABAR-OTHER-" and 
+                 subtree.parent().label() == "SBAR")):
+                matches.append(subtree.parent().treeposition())
+            matches.extend(find_rem_traces(subtree))
+    return matches
 
-## pulling out trees from corpus
-corpus_root = "../FG_project/CHILDESTreebank-curr/"
-corpus_file = "brown_adam.parsed"
+def del_nodes_treepos(tree, list_pos):
+    if not list_pos:
+        return
+    else: 
+        for pos in reversed(list_pos): # reversed to prevent index shifting
+            del tree[pos]
 
-corpus = BracketParseCorpusReader(corpus_root, corpus_file)
-parsed_sents = corpus.parsed_sents() 
-
-
-## dealing with "Bad tree detected" and getting strings for the trees
-# heights = [tree.height() for tree in parsed_sents]
-# min_tree_indices = [i for i,num in enumerate(heights) if num == 2]
-
-# tree_strs = [str(tree) for tree in parsed_sents if tree.height()>2]
-# height of 2 are the bad trees that were flattened 
-# I'm ignoring these now but should figure out why they are not being parsed
-
-
-## I think it's all the times where the final punctuation isn't indented 
-# Fixed these but still running into some issues
-# Just some typos where trees weren't indented 
-
-
-
-
-## now I want to strip all the unnecessary information ##
-# lowercase 's' is just a typo?
-# fix "AUX're" typo in the trees
-# 'feather' shouldn't be a node
-# 'WHNP=1' should be "-1"
-## all fixed 
-
-
-# removing info from nodes: removing numbering and trace type 
 def strip_tree(tree):
     """
-    Recursively traverse and modify the tree.
+    Recursively traverse and removes numbering and trace type from nodes.
     """
     for i, subtree in enumerate(tree):
         if isinstance(subtree, Tree):
@@ -57,37 +47,50 @@ def strip_tree(tree):
             # Process the leaf
             tree[i] = subtree.split('-')[0]  # Modify the leaf in the parent tree
 
-    return tree
-
-print(strip_tree(parsed_sents[0]))
 
 
-stripped_trees = [strip_tree(tree) for tree in parsed_sents]
+### loading in trees from the corpus ###
+corpus_root = "../FG_project/CHILDESTreebank-curr/"
+corpus_file = "brown_adam.parsed"
+
+corpus = BracketParseCorpusReader(corpus_root, corpus_file)
+parsed_sents = corpus.parsed_sents() 
+
+p_tree_list = [ParentedTree.convert(tree) for tree in parsed_sents]
 
 
+### removing unwanted traces ###
+target_strings = ["-NONE-A-PASS-", "-NONE-A-RAISE-", "-NONE-ABAR-OTHER-"]
+for p_tree in p_tree_list:
+    if any(substring in str(p_tree) for substring in target_strings):
+        rem_trace_pos = find_rem_traces(p_tree)
+        del_nodes_treepos(p_tree, rem_trace_pos)
 
-## pulling out unique nodes
+
+### removing info from nodes: removing numbering and trace type ###
+for tree in p_tree_list:
+    strip_tree(tree)
+
+
+### pulling out unique nodes as a check ###
 unique_nodes = []
-for tree in stripped_trees:
+for tree in p_tree_list:
     for subtree in tree.subtrees():
         node = subtree.label()
         if node not in unique_nodes:
             unique_nodes.append(node)
 
-## converting trees to strings 
+
+
+### converting trees to strings ###
 tree_strs = []
-for tree in stripped_trees:
+for tree in p_tree_list:
     tree_str = str(tree)
     cleaned = re.sub(r'\n\s*', ' ', tree_str)
     tree_strs.append(cleaned)
 
 
-
-
-
-
-
-### counter
+### writing to form and counts files ###
 tree_counts = Counter(tree_strs)
 
 unique_trees = list(tree_counts.keys())
@@ -106,6 +109,37 @@ counts = list(tree_counts.values())
 
 
 
+
+
+
+
+
+
+
+
+
+
+## Did some checks and made some edits to the local file for the corpus whenever there was an error loading in a tree
+## dealing with "Bad tree detected" and getting strings for the trees
+# heights = [tree.height() for tree in parsed_sents]
+# min_tree_indices = [i for i,num in enumerate(heights) if num == 2]
+
+# tree_strs = [str(tree) for tree in parsed_sents if tree.height()>2]
+# height of 2 are the bad trees that were flattened 
+# I'm ignoring these now but should figure out why they are not being parsed
+
+
+## I think it's all the times where the final punctuation isn't indented 
+# Fixed these but still running into some issues
+# Just some typos where trees weren't indented 
+
+
+## now I want to strip all the unnecessary information ##
+# lowercase 's' is just a typo?
+# fix "AUX're" typo in the trees
+# 'feather' shouldn't be a node
+# 'WHNP=1' should be "-1"
+## all fixed 
 
 
 
