@@ -3,9 +3,10 @@ import os
 import csv
 import shutil
 from datetime import datetime
+from sys import argv
 
 """
-Tracking the grammars during FG training to see when it converges.
+Tracking the grammars during FG training to check convergence.
 """
 
 def readLastLine(my_file): 
@@ -24,15 +25,7 @@ def readLastLine(my_file):
     return line.rstrip()
 
 
-# Path to the file being updated
-grammar_file = ("./fg-source-code-restore/out/brown_adam/" + 
-               "brown_adam.0.FG-output.rank-1.txt")
-
-debug_file = ("./fg-source-code-restore/out/brown_adam/" + 
-              "brown_adam.0.FG-output-debug.txt")
-
-
-def monitor_file(file_path, output_csv, check_interval=1, timeout=3600):
+def monitor_file(grammar, debug, output_csv, check_interval=1, timeout=3600):
     last_modified = None
     last_change_time = time.time()
 
@@ -46,18 +39,18 @@ def monitor_file(file_path, output_csv, check_interval=1, timeout=3600):
     while True:
         try:
             # Get the last modified time of the file
-            current_modified = os.path.getmtime(file_path)
+            current_modified = os.path.getmtime(grammar)
 
             # If the file has been modified since the last check
             if last_modified is None or current_modified != last_modified:
-                with open(file_path, 'r') as file:
+                with open(grammar, 'r') as file:
                     first_line = file.readline().strip()
 
                 # Get the file size in bytes
-                file_size = os.path.getsize(file_path)
+                file_size = os.path.getsize(grammar)
 
                 # sweep number 
-                sweep_num = readLastLine(debug_file)
+                sweep_num = readLastLine(debug)
 
                 # Write the first line, timestamp, and file size to the CSV file
                 with open(output_csv, mode='a', newline='') as file:
@@ -75,13 +68,28 @@ def monitor_file(file_path, output_csv, check_interval=1, timeout=3600):
                 break
 
         except FileNotFoundError:
-            print(f"File {file_path} not found. Waiting for the file to be created...")
+            print(f"File {grammar} not found. Waiting for the file to be created...")
 
         # Wait for the specified interval before checking again
         time.sleep(check_interval)
 
 
-monitor_file(grammar_file, 'output.csv')
+
+
+# File paths
+file_name = argv[1]
+
+grammar_file = ("./fg-source-code-restore/out/" + file_name + "/" + 
+                file_name + ".0.FG-output.rank-1.txt")
+
+debug_file = ("./fg-source-code-restore/out/" + file_name + "/" + 
+              file_name + ".0.FG-output-debug.txt")
+
+output_file = "./convergence_csvs/" + file_name + ".csv"
+
+
+# Main 
+monitor_file(grammar_file, debug_file, output_file)
 
 
 
