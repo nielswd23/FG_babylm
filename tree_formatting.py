@@ -56,8 +56,8 @@ corpus_file = "brown_adam.parsed"
 corpus = BracketParseCorpusReader(corpus_root, corpus_file)
 parsed_sents = corpus.parsed_sents() 
 
-p_tree_list = [ParentedTree.convert(tree) for tree in parsed_sents]
-
+p_tree_list = [ParentedTree.convert(tree) for tree in parsed_sents 
+               if "sinking" not in str(tree)] # added this because there was one tree that the FG could not parse 
 
 ### removing unwanted traces ###
 target_strings = ["-NONE-A-PASS-", "-NONE-A-RAISE-", "-NONE-ABAR-OTHER-"]
