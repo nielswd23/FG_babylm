@@ -20,6 +20,7 @@ def find_rem_traces(parented_tree):
             matches.extend(find_rem_traces(subtree))
     return matches
 
+
 def del_nodes_treepos(tree, list_pos):
     if not list_pos:
         return
@@ -47,7 +48,17 @@ def strip_tree(tree):
             # Process the leaf
             tree[i] = subtree.split('-')[0]  # Modify the leaf in the parent tree
 
+def remove_names(parented_tree):
+    pos_leaves = parented_tree.treepositions('leaves')
+    for pos in pos_leaves:
+        if parented_tree[pos[:-1]].label() == 'NNP': # check if the leaf is a proper noun
+            parented_tree[pos[:-1]][0] = 'Name'
+        if parented_tree[pos[:-1]].label() == 'NNPS': # check if the leaf is a proper noun
+            parented_tree[pos[:-1]][0] = 'Names'
 
+class MyTree(ParentedTree):
+    def has_proper_noun(self):
+        return 'NNP' in str(self) or 'NNPS' in str(self)
 
 ### loading in trees from the corpus ###
 corpus_root = "../FG_project/CHILDESTreebank-curr/"
@@ -56,20 +67,22 @@ corpus_file = "brown_adam.parsed"
 corpus = BracketParseCorpusReader(corpus_root, corpus_file)
 parsed_sents = corpus.parsed_sents() 
 
-p_tree_list = [ParentedTree.convert(tree) for tree in parsed_sents 
+p_tree_list = [MyTree.convert(tree) for tree in parsed_sents 
                if "sinking" not in str(tree)] # added this because there was one tree that the FG could not parse 
 
-### removing unwanted traces ###
+### processing trees ###
+# looping through all the trees and performing 3 actions:
+#   removing unwanted traces
+#   removing numbering and trace type from the nodes 
+#   replacing proper nouns with special "Name" or "Names" token
 target_strings = ["-NONE-A-PASS-", "-NONE-A-RAISE-", "-NONE-ABAR-OTHER-"]
 for p_tree in p_tree_list:
     if any(substring in str(p_tree) for substring in target_strings):
         rem_trace_pos = find_rem_traces(p_tree)
         del_nodes_treepos(p_tree, rem_trace_pos)
-
-
-### removing info from nodes: removing numbering and trace type ###
-for tree in p_tree_list:
-    strip_tree(tree)
+    strip_tree(p_tree)
+    if p_tree.has_proper_noun():
+        remove_names(p_tree)
 
 
 ### pulling out unique nodes as a check ###
@@ -96,13 +109,13 @@ tree_counts = Counter(tree_strs)
 unique_trees = list(tree_counts.keys())
 counts = list(tree_counts.values())
 
-# with open("forms.txt", 'w') as file:
-#     for tree in unique_trees:
-#         file.write("(" + tree + ")\n")
+with open("forms.txt", 'w') as file:
+    for tree in unique_trees:
+        file.write("(" + tree + ")\n")
 
-# with open("counts.txt", 'w') as file:
-#     for num in counts:
-#         file.write(str(num) + "\n")
+with open("counts.txt", 'w') as file:
+    for num in counts:
+        file.write(str(num) + "\n")
 
 
 
