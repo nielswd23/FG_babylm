@@ -3,6 +3,7 @@ from nltk import Tree
 from nltk.tree import ParentedTree
 from collections import Counter
 import re
+import os 
 
 ### helper functions ###
 def find_rem_traces(parented_tree):
@@ -61,7 +62,7 @@ class MyTree(ParentedTree):
         return 'NNP' in str(self) or 'NNPS' in str(self)
 
 ### loading in trees from the corpus ###
-corpus_root = "../FG_project/CHILDESTreebank-curr/"
+corpus_root = "./CHILDESTreebank/"
 corpus_file = "brown_adam.parsed"
 
 corpus = BracketParseCorpusReader(corpus_root, corpus_file)
@@ -109,11 +110,14 @@ tree_counts = Counter(tree_strs)
 unique_trees = list(tree_counts.keys())
 counts = list(tree_counts.values())
 
-with open("forms.txt", 'w') as file:
+os.makedirs("./samples/brown_adam_full", exist_ok = True)
+path = "./samples/brown_adam_full/"
+
+with open(path + "brown_adam.forms.txt", 'w') as file:
     for tree in unique_trees:
         file.write("(" + tree + ")\n")
 
-with open("counts.txt", 'w') as file:
+with open(path + "brown_adam.counts.txt", 'w') as file:
     for num in counts:
         file.write(str(num) + "\n")
 
